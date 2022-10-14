@@ -23,7 +23,7 @@ namespace Tetris_Server {
 
             acceptor.Handler = sHandler;
 
-            acceptor.Bind(new IPEndPoint(IPAddress.Parse("127.0.0.1"), port));
+            acceptor.Bind(new IPEndPoint(IPAddress.Any, port));
 
             DisplayHomeMessage();
 

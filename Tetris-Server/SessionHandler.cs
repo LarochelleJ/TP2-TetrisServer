@@ -8,18 +8,39 @@ using Mina.Core.Session;
 
 namespace Tetris_Server {
     class SessionHandler : IoHandlerAdapter {
+        public enum State {
+            Waiting,
+            Ingame
+        }
+
         // Session pool
-        Dictionary<IoSession, Boolean> sessions = new Dictionary<IoSession, Boolean>();
+        LinkedList<IoSession> sessions = new LinkedList<IoSession>();
 
         public override void SessionCreated(IoSession session) {
-            sessions[session] = true;
+            sessions.AddLast(session);
+            session.Write("ts|Connected to server: Waiting for a player...");
+            session.SetAttribute("Player", new Player(session));
+            session.SetAttribute("State", State.Waiting);
+            FindOpponent(session);
+        }
+
+        private void FindOpponent(IoSession playerSession) {
+            foreach (IoSession session in sessions){
+                if (session != playerSession && session.GetAttribute("Game") == null) {
+                    Game game = new Game((Player)playerSession.GetAttribute("Player"), (Player)session.GetAttribute("Player"));
+                }
+            }
         }
 
         public override void MessageReceived(IoSession session, Object message) {
             if (Program.debug) {
                 Console.WriteLine($"Packet received: {message}");
             }
-            parsePacket((string)message);
+            if ((State)session.GetAttribute("State") == State.Ingame) {
+                ParsePacket((string)message, session);
+            } else { // Waiting
+                ParseWaitPacket((string)message, session);
+            }
         }
 
         public override void SessionClosed(IoSession session) {
@@ -27,7 +48,7 @@ namespace Tetris_Server {
         }
 
         public void SendAll(string message) {
-            foreach (IoSession session in sessions.Keys) {
+            foreach (IoSession session in sessions) {
                 session.Write(message);
             }
         }
@@ -38,31 +59,51 @@ namespace Tetris_Server {
             session.Close(true);
         }
 
-        private void parsePacket(string packet) {
+        private void ParseWaitPacket(string packet, IoSession session) {
+            string[] args = packet.Split("|");
+            if (args.Length > 0) {
+                switch (args[0]) {
+                    case "ready":
+                        int shape_id = int.Parse(args[1]);
+                        Game game = (Game)session.GetAttribute("Game");
+                        game.SendToOpponents("p|" + shape_id, (Player)session.GetAttribute("Player"));
+                        game.Ready();
+                        break;
+                }
+            }
+        }
+
+        private void ParsePacket(string packet, IoSession session) {
+            Game game = (Game)session.GetAttribute("Game");
+            Player player = (Player)session.GetAttribute("Player");
+
             string[] args = packet.Split("|");
             if (args.Length > 0) {
                 switch (args[0]) {
                     case "p":
                         int shape_id = int.Parse(args[1]);
-                        SendAll("p|" + shape_id);
+                        game.SendToOpponents("p|" + shape_id, player);
                         break;
                     case "r":
-                        SendAll("r|");
+                        game.SendToOpponents("r|", player);
                         break;
                     case "l":
-                        SendAll("l|");
+                        game.SendToOpponents("l|", player);
                         break;
                     case "d":
-                        SendAll("d|");
+                        game.SendToOpponents("d|" + args[1], player);
                         break;
                     case "ro":
-                        SendAll("ro|");
+                        game.SendToOpponents("ro|", player);
                         break;
                     case "sd":
-                        SendAll("sd|");
+                        game.SendToOpponents("sd|", player);
+                        break;
+                    case "po":
+                        game.SendToOpponents("po|" + args[1], player);
                         break;
                     case "sb":
-                        SendAll("sb|");
+                        game.SendToOpponents("sb|", player);
                         break;
                 }
             }
