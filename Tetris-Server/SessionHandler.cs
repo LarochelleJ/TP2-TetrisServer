@@ -51,6 +51,7 @@ namespace Tetris_Server {
             if (game != null) {
                 Player p = (Player)session.GetAttribute("Player");
                 if (p != null) {
+                    p.Alive = false;
                     game.SendToOpponents("username|Player disconnected", p);
                 }
             }
@@ -144,6 +145,22 @@ namespace Tetris_Server {
             if (bestPlayer != null) {
                 SendAll("best|" + bestPlayer.Name + "|" + bestPlayer.Score);
             }
+        }
+
+        public void resetBestScore() {
+            List<Game> gamesToClear = new List<Game>();
+            foreach (Game game in games) {
+                if (game.gameOver) {
+                    gamesToClear.Add(game);
+                }
+            }
+
+            foreach (Game game in gamesToClear) {
+                games.Remove(game);
+            }
+
+            updateBestScore();
+            SendAll("best| |0");
         }
     }
 }

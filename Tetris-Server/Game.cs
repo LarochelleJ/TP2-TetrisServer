@@ -8,6 +8,7 @@ namespace Tetris_Server {
     internal class Game {
         private Player[] players;
         private int readyCounter = 0;
+        public bool gameOver = false;
 
         /*
          * Game class is made this way to handle games with more than 2 people. 
@@ -72,6 +73,7 @@ namespace Tetris_Server {
             }
 
             if (allDead) {
+                gameOver = true;
                 Player winner = getBestPlayer();
                 if (winner != null) {
                     foreach (Player p in players) {

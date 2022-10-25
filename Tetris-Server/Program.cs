@@ -44,6 +44,10 @@ namespace Tetris_Server {
                         debug = !debug;
                         if (debug) Console.WriteLine("Debug mode enabled"); else Console.WriteLine("Debug mode disabled");
                         break;
+                    case "resetscore":
+                        sHandler.resetBestScore();
+                        Console.WriteLine("Best score reseted!");
+                        break;
                     case "clear":
                         Console.Clear();
                         DisplayHomeMessage();
@@ -60,6 +64,7 @@ namespace Tetris_Server {
             Console.WriteLine("shutdown - Shutdown the server");
             Console.WriteLine("sendall - Send a message / packet to every sessions");
             Console.WriteLine("debug - Display debugging informations");
+            Console.WriteLine("resetscore - Reset best score");
             Console.WriteLine("clear - Clear the console" + Environment.NewLine);
         }
 
