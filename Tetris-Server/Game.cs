@@ -31,7 +31,7 @@ namespace Tetris_Server {
         }
 
         public void SendAll(string packet) {
-            foreach(Player p in players) {
+            foreach (Player p in players) {
                 p.GetSession().Write(packet);
             }
         }
@@ -47,6 +47,41 @@ namespace Tetris_Server {
         public void Ready() {
             if (++readyCounter >= players.Length) {
                 Start();
+            }
+        }
+
+        public Player getBestPlayer() {
+            int highest = 0;
+            Player best = null;
+            foreach (Player p in players) {
+                if (p.Score > highest) {
+                    highest = p.Score;
+                    best = p;
+                }
+            }
+            return best;
+        }
+
+        public void verifGameOver() {
+            bool allDead = true;
+            foreach (Player p in players) {
+                if (p.Alive) {
+                    allDead = false;
+                    break;
+                }
+            }
+
+            if (allDead) {
+                Player winner = getBestPlayer();
+                if (winner != null) {
+                    foreach (Player p in players) {
+                        if (p == winner) {
+                            p.GetSession().Write("win|" + "1");
+                        } else {
+                            p.GetSession().Write("win|" + "0");
+                        }
+                    }
+                }
             }
         }
     }

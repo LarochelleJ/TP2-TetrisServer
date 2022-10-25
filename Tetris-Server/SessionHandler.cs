@@ -15,12 +15,14 @@ namespace Tetris_Server {
 
         // Session pool
         LinkedList<IoSession> sessions = new LinkedList<IoSession>();
+        List<Game> games = new List<Game>();
 
         public override void SessionCreated(IoSession session) {
             sessions.AddLast(session);
             session.Write("ts|Connected to server: Waiting for a player...");
             session.SetAttribute("Player", new Player(session));
             session.SetAttribute("State", State.Waiting);
+            updateBestScore();
             FindOpponent(session);
         }
 
@@ -28,6 +30,7 @@ namespace Tetris_Server {
             foreach (IoSession session in sessions){
                 if (session != playerSession && session.GetAttribute("Game") == null) {
                     Game game = new Game((Player)playerSession.GetAttribute("Player"), (Player)session.GetAttribute("Player"));
+                    games.Add(game);
                 }
             }
         }
@@ -44,6 +47,13 @@ namespace Tetris_Server {
         }
 
         public override void SessionClosed(IoSession session) {
+            Game game = (Game)session.GetAttribute("Game");
+            if (game != null) {
+                Player p = (Player)session.GetAttribute("Player");
+                if (p != null) {
+                    game.SendToOpponents("username|Player disconnected", p);
+                }
+            }
             sessions.Remove(session);
         }
 
@@ -65,8 +75,13 @@ namespace Tetris_Server {
                 switch (args[0]) {
                     case "ready":
                         int shape_id = int.Parse(args[1]);
+                        string playerName = args[2];
+                        Player p = (Player)session.GetAttribute("Player");
+                        p.Name = playerName;
+
                         Game game = (Game)session.GetAttribute("Game");
-                        game.SendToOpponents("p|" + shape_id, (Player)session.GetAttribute("Player"));
+                        game.SendToOpponents("p|" + shape_id, p);
+                        game.SendToOpponents("username|" + playerName, p);
                         game.Ready();
                         break;
                 }
@@ -100,12 +115,34 @@ namespace Tetris_Server {
                         game.SendToOpponents("sd|", player);
                         break;
                     case "po":
+                        player.Score = int.Parse(args[1]);
                         game.SendToOpponents("po|" + args[1], player);
+                        updateBestScore();
                         break;
                     case "sb":
                         game.SendToOpponents("sb|", player);
                         break;
+                    case "dead":
+                        player.Alive = false;
+                        game.verifGameOver();
+                        break;
                 }
+            }
+        }
+
+        private void updateBestScore() {
+            int highest = 0;
+            Player bestPlayer = null;
+            foreach (Game game in games) {
+                Player bestFromGame = game.getBestPlayer();
+                if (bestFromGame != null && bestFromGame.Score > highest) {
+                    highest = bestFromGame.Score;
+                    bestPlayer = bestFromGame;
+                }
+            }
+
+            if (bestPlayer != null) {
+                SendAll("best|" + bestPlayer.Name + "|" + bestPlayer.Score);
             }
         }
     }

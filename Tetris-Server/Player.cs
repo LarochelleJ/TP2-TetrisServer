@@ -10,10 +10,14 @@ namespace Tetris_Server {
         public int Level { get; set; }
         public int Score { get; set; }
 
+        public string Name { get; set; }
+        public bool Alive { get; set; }
+
         private IoSession session;
 
         public Player(IoSession session) {
             this.session = session;
+            Alive = true;
         }
 
         public void SendPacket(string packet) {
